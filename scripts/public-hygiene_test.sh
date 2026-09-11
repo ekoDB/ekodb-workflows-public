@@ -6,6 +6,11 @@
 # It cannot catch an internal path or term that carries no ekoDB/ prefix; that
 # stays with review.
 set -uo pipefail
+# Hermetic against the caller's git environment: no inherited repository
+# pointers and no global or system config (identity, signing, hooks), so a
+# fixture behaves the same on a developer's machine and on a bare runner.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

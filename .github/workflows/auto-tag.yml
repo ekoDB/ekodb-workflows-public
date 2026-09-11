@@ -61,6 +61,13 @@ jobs:
           repository: ekoDB/ekodb-workflows-public
           ref: ${{ github.job_workflow_sha }}
           path: .ekodb-workflows-public
+      - name: Assert the scripts are the ones this workflow is pinned to
+        env:
+          PIN: ${{ github.job_workflow_sha }}
+        run: |
+          [ -n "$PIN" ] || { echo "::error::auto-tag: github.job_workflow_sha is empty -- refusing to run scripts from an unpinned checkout."; exit 1; }
+          have="$(git -C .ekodb-workflows-public rev-parse HEAD)"
+          [ "$have" = "$PIN" ] || { echo "::error::auto-tag: the scripts checkout is at ${have}, not the pinned ${PIN}."; exit 1; }
       - name: Is the head commit a release cap?
         id: cap
         run: |
@@ -92,6 +99,13 @@ jobs:
           repository: ekoDB/ekodb-workflows-public
           ref: ${{ github.job_workflow_sha }}
           path: .ekodb-workflows-public
+      - name: Assert the scripts are the ones this workflow is pinned to
+        env:
+          PIN: ${{ github.job_workflow_sha }}
+        run: |
+          [ -n "$PIN" ] || { echo "::error::auto-tag: github.job_workflow_sha is empty -- refusing to run scripts from an unpinned checkout."; exit 1; }
+          have="$(git -C .ekodb-workflows-public rev-parse HEAD)"
+          [ "$have" = "$PIN" ] || { echo "::error::auto-tag: the scripts checkout is at ${have}, not the pinned ${PIN}."; exit 1; }
       - name: Assert the commit is on the default branch
         id: contained
         env:
@@ -154,6 +168,13 @@ jobs:
           repository: ekoDB/ekodb-workflows-public
           ref: ${{ github.job_workflow_sha }}
           path: .ekodb-workflows-public
+      - name: Assert the scripts are the ones this workflow is pinned to
+        env:
+          PIN: ${{ github.job_workflow_sha }}
+        run: |
+          [ -n "$PIN" ] || { echo "::error::auto-tag: github.job_workflow_sha is empty -- refusing to run scripts from an unpinned checkout."; exit 1; }
+          have="$(git -C .ekodb-workflows-public rev-parse HEAD)"
+          [ "$have" = "$PIN" ] || { echo "::error::auto-tag: the scripts checkout is at ${have}, not the pinned ${PIN}."; exit 1; }
       - name: Assert the tag exists before publishing its Release
         env:
           GH_TOKEN: ${{ github.token }}
