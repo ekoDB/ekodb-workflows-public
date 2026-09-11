@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the pinned tooling
+        run: pip install -q -r requirements-dev.txt
+      - name: Install actionlint (shellcheck is preinstalled on ubuntu-latest)
+        run: |
+          mkdir -p .tooling
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12 .tooling >/dev/null
+      - run: make lint
+      - run: make test

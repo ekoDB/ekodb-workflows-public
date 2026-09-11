@@ -1,0 +1,4 @@
+# Pinned Python tooling for `make test` and `make lint`. The one place these
+# versions are written: ci.yml installs from this file.
+PyYAML==6.0.2
+ruff==0.16.0
