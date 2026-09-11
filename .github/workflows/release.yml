@@ -1,0 +1,17 @@
+name: release
+
+# This repository releases through its own workflow: a chore(*): vX.Y.Z cap on
+# main tags itself and publishes its Release. Callers elsewhere pin @v1.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    uses: ./.github/workflows/auto-tag.yml
+    with:
+      version-command: jq -r .version version.json
