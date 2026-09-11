@@ -1,0 +1,184 @@
+name: auto-tag
+
+# Cut the release tag and publish the Release when a version cap reaches the
+# default branch. Reusable: a caller passes its manifest command (or none, for
+# a repository versioned by tags alone) and optionally a command to run after
+# the Release. Everything here runs with github.token; nothing is shared.
+#
+# The scripts live in this repository and are checked out at the exact commit
+# this workflow file was resolved from (github.job_workflow_sha), so YAML and
+# scripts cannot pair across versions and a caller needs no token to read them.
+#
+# The tag goes on the commit that was DECIDED on, github.sha, never on "the
+# branch tip by the time the job runs": the tag job asserts that commit is
+# contained in the default branch before tagging it.
+
+on:
+  workflow_call:
+    inputs:
+      version-command:
+        description: "Shell printing the release version from the caller's manifest. Optional: when absent, the newest `## [X.Y.Z]` heading of the changelog is the second source."
+        required: false
+        type: string
+        default: ""
+      changelog:
+        description: "Path to the caller's changelog."
+        required: false
+        type: string
+        default: "CHANGELOG.md"
+      post-tag-command:
+        description: "Shell to run after the Release is published, with TAG (vX.Y.Z) and VERSION (X.Y.Z) in the environment. Optional."
+        required: false
+        type: string
+        default: ""
+      default-branch:
+        description: "The branch a cap must be contained in."
+        required: false
+        type: string
+        default: "main"
+    outputs:
+      version:
+        description: "X.Y.Z when the commit was a cap, empty otherwise."
+        value: ${{ jobs.detect.outputs.version }}
+      tag:
+        description: "vX.Y.Z when the commit was a cap, empty otherwise."
+        value: ${{ jobs.detect.outputs.tag }}
+
+permissions:
+  contents: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.cap.outputs.version }}
+      tag: ${{ steps.cap.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out the workflow's scripts (pinned to this workflow's commit)
+        uses: actions/checkout@v7
+        with:
+          repository: ekoDB/ekodb-workflows-public
+          ref: ${{ github.job_workflow_sha }}
+          path: .ekodb-workflows-public
+      - name: Is the head commit a release cap?
+        id: cap
+        run: |
+          SUBJECT="$(git log -1 --format=%s "$GITHUB_SHA")"
+          echo "subject: ${SUBJECT}"
+          out="$(SUBJECT="$SUBJECT" bash .ekodb-workflows-public/scripts/release-cap-detect.sh)"
+          if [ -n "$out" ]; then
+            version="${out#version=}"
+            { echo "version=${version}"; echo "tag=v${version}"; } >> "$GITHUB_OUTPUT"
+            printf '### Release cap detected — tagging\n\n| | |\n| --- | --- |\n| Version | %s |\n| Commit | %s |\n| Subject | %s |\n\n' "$version" "$GITHUB_SHA" "$SUBJECT" >> "$GITHUB_STEP_SUMMARY"
+          else
+            { echo "version="; echo "tag="; } >> "$GITHUB_OUTPUT"
+            printf '### Not a release cap — nothing to tag\n\nThis is the normal outcome for a merge that is not a version cap.\n\n- Commit: %s\n- Subject: %s\n- A cap is chore(*): vX.Y.Z with a plain version and no pre-release suffix.\n\n' "$GITHUB_SHA" "$SUBJECT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  tag:
+    needs: detect
+    if: needs.detect.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the commit to tag (full history)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Check out the workflow's scripts (pinned to this workflow's commit)
+        uses: actions/checkout@v7
+        with:
+          repository: ekoDB/ekodb-workflows-public
+          ref: ${{ github.job_workflow_sha }}
+          path: .ekodb-workflows-public
+      - name: Assert the commit is on the default branch
+        id: contained
+        env:
+          DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        run: |
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          sha="$(git rev-parse HEAD)"
+          if ! git merge-base --is-ancestor "$sha" FETCH_HEAD; then
+            echo "::error::auto-tag: ${sha} is not contained in ${DEFAULT_BRANCH} -- refusing to tag code that is not merged."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Resolve the version from the manifest or the changelog
+        id: version
+        env:
+          VERSION_COMMAND: ${{ inputs.version-command }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          if [ -n "$VERSION_COMMAND" ]; then
+            version="$(eval "$VERSION_COMMAND")"
+          else
+            version="$(CHANGELOG="$CHANGELOG" bash .ekodb-workflows-public/scripts/changelog-version.sh)"
+          fi
+          [ -n "$version" ] || { echo "::error::auto-tag: no version could be read."; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Gate (plain semver, subject equals manifest, dated block, tag absent)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SUBJECT_VERSION: ${{ needs.detect.outputs.version }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: bash .ekodb-workflows-public/scripts/release-tag-gate.sh
+      - name: Cut and push the annotated tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET: ${{ steps.contained.outputs.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          [ -n "$TARGET" ] || { echo "::error::auto-tag: the containment assert exported no SHA -- refusing to tag."; exit 1; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" "$TARGET" -m "Release v${VERSION} (cut by auto-tag for @${ACTOR})"
+          git push origin "refs/tags/v${VERSION}"
+          # Nothing below may fail the step: the tag is pushed.
+          {
+            printf '### Tag pushed — v%s\n\n| | |\n| --- | --- |\n| Commit | %s |\n| Contained in the default branch | verified before tagging |\n\n' "$VERSION" "$TARGET" >> "$GITHUB_STEP_SUMMARY"
+          } || echo "::warning::auto-tag: v${VERSION} was pushed at ${TARGET}, but writing the summary failed."
+
+  release:
+    needs: [detect, tag]
+    if: ${{ !cancelled() && needs.detect.outputs.version != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tagged commit (its changelog is the notes)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Check out the workflow's scripts (pinned to this workflow's commit)
+        uses: actions/checkout@v7
+        with:
+          repository: ekoDB/ekodb-workflows-public
+          ref: ${{ github.job_workflow_sha }}
+          path: .ekodb-workflows-public
+      - name: Assert the tag exists before publishing its Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.detect.outputs.tag }}
+        run: bash .ekodb-workflows-public/scripts/tag-exists-gate.sh
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.detect.outputs.tag }}
+          CHANGELOG: ${{ inputs.changelog }}
+        run: |
+          bash .ekodb-workflows-public/scripts/github-release.sh
+          printf '### Release published\n\n| | |\n| --- | --- |\n| Tag | %s |\n| Notes | the "## [%s]" block of %s |\n\n' "$TAG" "${TAG#v}" "$CHANGELOG" >> "$GITHUB_STEP_SUMMARY"
+
+  post-tag:
+    needs: [detect, release]
+    if: ${{ !cancelled() && needs.detect.outputs.version != '' && needs.release.result == 'success' && inputs.post-tag-command != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Run the caller's post-tag command
+        env:
+          POST_TAG_COMMAND: ${{ inputs.post-tag-command }}
+          TAG: ${{ needs.detect.outputs.tag }}
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: eval "$POST_TAG_COMMAND"
