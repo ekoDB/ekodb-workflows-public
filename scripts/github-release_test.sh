@@ -41,7 +41,7 @@ seed; out="$(run v1.3.0)"; rc=$?
 [ -f "$TMP/created-args" ] && ok "happy: release created" || fail "happy: no create call"
 grep -q -- '--verify-tag' "$TMP/created-args" && ok "happy: --verify-tag" || fail "happy: --verify-tag missing"
 grep -q -- '--generate-notes' "$TMP/created-args" && ok "happy: --generate-notes" || fail "happy: --generate-notes missing"
-grep -q -- '--latest' "$TMP/created-args" && ok "happy: --latest" || fail "happy: --latest missing"
+grep -q -- '--latest' "$TMP/created-args" && fail "happy: --latest passed; latest is GitHub's call" || ok "happy: latest left to GitHub"
 grep -q 'The new thing' "$TMP/created-notes" && ok "happy: block leads the notes" || fail "happy: block missing from notes"
 grep -q 'Old fix' "$TMP/created-notes" && fail "happy: previous block leaked" || ok "happy: notes scoped to 1.3.0"
 printf '%s' "$out" | grep -q 'still reports' && fail "happy: warned although the repo reports the new tag as latest" || ok "happy: no latest warning when the repo agrees"

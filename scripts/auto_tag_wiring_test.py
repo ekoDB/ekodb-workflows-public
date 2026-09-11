@@ -46,10 +46,10 @@ for name in ("version", "tag"):
     val = outputs.get(name, {}).get("value", "")
     check("jobs.detect.outputs." + name in val, f"output {name} comes from detect", f"value is {val!r}")
 
-# 2. Permissions: once, at workflow level, contents: write; no job-level key.
+# 2. Permissions: contents: write at workflow level; detect, which only reads, narrows to read; nothing else declares any.
 check(wf.get("permissions") == {"contents": "write"}, "workflow-level permissions are exactly contents: write", f"permissions {wf.get('permissions')}")
-job_perms = [j for j, spec in jobs.items() if "permissions" in spec]
-check(not job_perms, "no job declares its own permissions", f"jobs with permissions: {job_perms}")
+job_perms = {j: spec["permissions"] for j, spec in jobs.items() if "permissions" in spec}
+check(job_perms == {"detect": {"contents": "read"}}, "detect narrows itself to contents: read and no other job declares permissions", f"jobs with permissions: {job_perms}")
 
 # 3. Jobs, order, gates.
 check(list(jobs) == ["detect", "tag", "release", "post-tag"], "four jobs in order", f"jobs {list(jobs)}")

@@ -11,9 +11,11 @@ plain version, no pre-release suffix), containing the changelog collapse of
 `## [Unreleased]` into `## [X.Y.Z] - YYYY-MM-DD` and the version bump. Any
 other merge is a green no-op that says so in the run summary.
 
-The cap must reach the default branch with its subject intact: rebase-merge
-it. A squash appends the PR number and a merge commit replaces the subject,
-and either makes the cap a silent, green no-op.
+The cap must reach the default branch with its subject intact and as the tip
+of the push: rebase-merge it, and merge nothing on top of it in the same push.
+A squash appends the PR number, a merge commit replaces the subject, and a
+push whose tip is a later commit never examines the cap; each is a silent,
+green no-op (the run summary names the subject it examined).
 
 ## Calling it
 
