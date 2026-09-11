@@ -1,7 +1,7 @@
 name: release
 
 # This repository releases through its own workflow: a chore(*): vX.Y.Z cap on
-# main tags itself and publishes its Release. Callers elsewhere pin @v1.
+# main tags itself and publishes its Release. Callers elsewhere pin @main.
 
 on:
   push:
