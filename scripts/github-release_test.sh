@@ -21,6 +21,9 @@ case "\$1 \$2" in
   "release view")
     if [ "\$3" = "--json" ]; then sed -E 's/.*"tagName":"([^"]*)".*/\\1/' "$TMP/latest-tag" 2>/dev/null; exit 0; fi
     [ -f "$TMP/release-exists" ] ;;
+  "api -X")
+    printf '%s\n' "\$@" > "$TMP/patched-args"; [ -f "$TMP/patch-fails" ] && exit 1; exit 0 ;;
+  "api "*) printf '42\n' ;;
   "release create")
     [ -f "$TMP/create-fails" ] && { echo "HTTP 502" >&2; exit 1; }
     shift 2; printf '%s\n' "\$@" > "$TMP/created-args"
@@ -30,18 +33,19 @@ esac
 EOF
 chmod +x "$GH"
 seed() {
-  rm -f "$TMP/release-exists" "$TMP/created-args" "$TMP/created-notes" "$TMP/create-fails"
+  rm -f "$TMP/release-exists" "$TMP/created-args" "$TMP/created-notes" "$TMP/create-fails" "$TMP/patched-args" "$TMP/patch-fails"
   printf '## [1.3.0] - 2026-09-11\n\n- **The new thing.** It does the thing.\n\n## [1.2.9] - 2026-09-01\n\n- Old fix that must not leak.\n' > "$TMP/CHANGELOG.md"
   printf '{"tagName":"v1.3.0"}' > "$TMP/latest-tag"
 }
-run() { GITHUB_RELEASE_GH="$GH" TAG="$1" CHANGELOG="${2:-$TMP/CHANGELOG.md}" bash "$SUT" 2>&1; }
+run() { GITHUB_RELEASE_GH="$GH" TAG="$1" CHANGELOG="${2:-$TMP/CHANGELOG.md}" GITHUB_REPOSITORY=o/r bash "$SUT" 2>&1; }
 
 seed; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && ok "happy: exit 0" || fail "happy -- rc=$rc out='$out'"
 [ -f "$TMP/created-args" ] && ok "happy: release created" || fail "happy: no create call"
 grep -q -- '--verify-tag' "$TMP/created-args" && ok "happy: --verify-tag" || fail "happy: --verify-tag missing"
 grep -q -- '--generate-notes' "$TMP/created-args" && ok "happy: --generate-notes" || fail "happy: --generate-notes missing"
-grep -q -- '--latest' "$TMP/created-args" && fail "happy: --latest passed; latest is GitHub's call" || ok "happy: latest left to GitHub"
+grep -q -- '--latest' "$TMP/created-args" && fail "happy: --latest forced on create" || ok "happy: --latest not forced on create"
+[ -f "$TMP/patched-args" ] && grep -q 'make_latest=legacy' "$TMP/patched-args" && grep -q 'repos/o/r/releases/42' "$TMP/patched-args" && ok "happy: latest follows GitHub's date-and-version rule (make_latest=legacy on the new release)" || fail "happy: make_latest=legacy not set: $(cat "$TMP/patched-args" 2>/dev/null)"
 grep -q 'The new thing' "$TMP/created-notes" && ok "happy: block leads the notes" || fail "happy: block missing from notes"
 grep -q 'Old fix' "$TMP/created-notes" && fail "happy: previous block leaked" || ok "happy: notes scoped to 1.3.0"
 printf '%s' "$out" | grep -q 'still reports' && fail "happy: warned although the repo reports the new tag as latest" || ok "happy: no latest warning when the repo agrees"
@@ -60,6 +64,12 @@ seed; printf '## [1.5.0] - 2026-09-11\n\n\n## [1.3.0] - 2026-09-11\n\n- x\n' > "
 
 seed; out="$(run 1.3.0)"; rc=$?
 [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'not v' && ok "tag without v prefix refused" || fail "bad-tag -- rc=$rc out='$out'"
+
+seed; touch "$TMP/patch-fails"; out="$(run v1.3.0)"; rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'could not set make_latest' && ok "a failed make_latest patch is a warning, the Release stands" || fail "patch-fail -- rc=$rc out='$out'"
+
+seed; out="$(env -u GITHUB_REPOSITORY GITHUB_RELEASE_GH="$GH" TAG=v1.3.0 CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
+[ "$rc" -eq 1 ] && [ ! -f "$TMP/created-args" ] && printf '%s' "$out" | grep -q 'REPO' && ok "an unset REPO is refused before anything is published" || fail "no-repo -- rc=$rc out='$out'"
 
 seed; out="$(run v1.3.0 "$TMP/missing.md")"; rc=$?
 [ "$rc" -eq 1 ] && [ ! -f "$TMP/created-args" ] && printf '%s' "$out" | grep -q 'no changelog' && ok "missing changelog refused before create" || fail "no-changelog -- rc=$rc out='$out'"
