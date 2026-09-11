@@ -4,6 +4,8 @@
 # The notes are the `## [X.Y.Z]` block of the changelog at the tagged commit,
 # followed by GitHub's generated notes. Idempotent: an existing Release is
 # reported and exits 0, so a half-finished release is completed by re-running.
+# Which Release is "latest" is left to GitHub (by date and version), so a
+# lower version cut after a higher one is not force-marked latest.
 # Refuses a pre-release tag (skip, exit 0: only releases are published) and a
 # missing or empty block (exit 1: a release carries its notes or is not cut).
 #
@@ -45,7 +47,7 @@ if [ "$(grep -cv '^[[:space:]]*$' "$NOTES")" -le 1 ]; then
   exit 1
 fi
 
-"$GH" release create "$TAG" --title "$TAG" --notes-file "$NOTES" --generate-notes --latest --verify-tag \
+"$GH" release create "$TAG" --title "$TAG" --notes-file "$NOTES" --generate-notes --verify-tag \
   || { echo "github-release: gh release create failed for ${TAG}." >&2; exit 1; }
 
 actual="$("$GH" release view --json tagName --jq .tagName 2>/dev/null || true)"

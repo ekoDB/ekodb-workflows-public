@@ -50,6 +50,8 @@ permissions:
 jobs:
   detect:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.cap.outputs.version }}
       tag: ${{ steps.cap.outputs.tag }}
