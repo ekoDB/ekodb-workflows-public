@@ -6,11 +6,14 @@
 # It cannot catch an internal path or term that carries no ekoDB/ prefix; that
 # stays with review.
 set -uo pipefail
-# Hermetic against the caller's git environment: no inherited repository
-# pointers and no global or system config (identity, signing, hooks), so a
-# fixture behaves the same on a developer's machine and on a bare runner.
+# Hermetic against the caller's environment: no inherited repository pointers,
+# no global or system git config (identity, signing, hooks), none of the
+# scripts' own input variables, and no flags a parent make would hand to a
+# child, so a fixture behaves the same on a developer's machine, under
+# `make VERSION=x test`, and on a bare runner.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+unset VERSION SUBJECT_VERSION SUBJECT TAG CHANGELOG REPO GITHUB_REPOSITORY MAKEFLAGS MFLAGS
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -62,8 +65,9 @@ mkdir -p "$TMP/empty"; git -C "$TMP/empty" init -q
 out="$(scan "$TMP/empty")"; rc=$?
 [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'no tracked files' && ok "an empty root is refused, not reported clean" || fail "empty -- rc=$rc out='$out'"
 
-# 4. The real tree.
-out="$(scan "${PUBLIC_HYGIENE_ROOT:-$DIR/..}")"; rc=$?
+# 4. The real tree (or the root given as the only argument: nothing ambient can
+#    redirect this scan).
+out="$(scan "${1:-$DIR/..}")"; rc=$?
 [ "$rc" -eq 0 ] && ok "this repository names only public repositories" || fail "this repository names a non-public repository: $out"
 
 if [ "$FAILURES" -ne 0 ]; then printf '%s failure(s)\n' "$FAILURES"; exit 1; fi
