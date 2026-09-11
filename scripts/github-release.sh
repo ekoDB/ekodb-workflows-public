@@ -35,19 +35,25 @@ esac
 
 # make "latest" GitHub's date-and-version call for TAG; a failure is reported
 # with the command that finishes it by hand, and never fails the run: the
-# Release exists either way.
+# Release exists either way. $1 says what a failure means: "created" (the
+# API default has just marked it latest) or "existing" (an earlier run may
+# already have set the policy; only this re-application failed).
 set_latest_policy() {
-  local id
+  local id state
   id="$("$GH" api "repos/${REPO}/releases/tags/${TAG}" --jq .id 2>/dev/null)" || id=""
   if [ -z "$id" ] || ! "$GH" api -X PATCH "repos/${REPO}/releases/${id}" -f make_latest=legacy >/dev/null 2>&1; then
-    echo "::warning::github-release: could not set make_latest=legacy on ${TAG} -- GitHub's default has marked it latest regardless of version. Finish by hand: gh api -X PATCH repos/${REPO}/releases/${id:-<id>} -f make_latest=legacy"
+    case "$1" in
+      created) state="GitHub's default has marked it latest regardless of version" ;;
+      *)       state="the policy may not be in force" ;;
+    esac
+    echo "::warning::github-release: could not set make_latest=legacy on ${TAG} -- ${state}. Finish by hand: gh api -X PATCH repos/${REPO}/releases/${id:-<id>} -f make_latest=legacy"
     return 1
   fi
 }
 
 if "$GH" release view "$TAG" >/dev/null 2>&1; then
   echo "github-release: release ${TAG} already exists; nothing to publish."
-  set_latest_policy || true
+  set_latest_policy existing || true
   exit 0
 fi
 
@@ -70,7 +76,8 @@ fi
 "$GH" release create "$TAG" --title "$TAG" --notes-file "$NOTES" --generate-notes --verify-tag \
   || { echo "github-release: gh release create failed for ${TAG}." >&2; exit 1; }
 
-set_latest_policy || true
+rule=" (GitHub's date-and-version rule)"
+set_latest_policy created || rule=""
 
 actual="$("$GH" release view --json tagName --jq .tagName 2>/dev/null || true)"
-echo "github-release: published ${TAG}; the repository reports ${actual:-none} as its latest release (GitHub's date-and-version rule)."
+echo "github-release: published ${TAG}; the repository reports ${actual:-none} as its latest release${rule}."

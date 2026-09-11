@@ -56,6 +56,7 @@ seed; touch "$TMP/release-exists"; out="$(run v1.3.0)"; rc=$?
 
 seed; touch "$TMP/release-exists" "$TMP/patch-fails"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'Finish by hand: gh api -X PATCH repos/o/r/releases/42' && ok "existing release, failed patch: exit 0 with the by-hand command" || fail "existing-patch-fail -- rc=$rc out='$out'"
+printf '%s' "$out" | grep -q 'may not be in force' && ! printf '%s' "$out" | grep -q 'has marked it latest' && ok "existing release, failed patch: the warning claims only what it knows" || fail "existing-patch-fail wording: $out"
 
 seed; out="$(run v1.3.0-rc.1)"; rc=$?
 [ "$rc" -eq 0 ] && [ ! -f "$TMP/created-args" ] && printf '%s' "$out" | grep -q 'pre-release' && ok "pre-release: skipped, nothing created" || fail "prerelease -- rc=$rc out='$out'"
@@ -71,6 +72,7 @@ seed; out="$(run 1.3.0)"; rc=$?
 
 seed; touch "$TMP/patch-fails"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'could not set make_latest' && ok "a failed make_latest patch is a warning, the Release stands" || fail "patch-fail -- rc=$rc out='$out'"
+printf '%s' "$out" | grep -q 'has marked it latest regardless' && ! printf '%s' "$out" | grep -q 'date-and-version rule' && ok "a failed make_latest patch: the closing line does not credit a rule that was not applied" || fail "patch-fail wording: $out"
 
 seed; out="$(env -u GITHUB_REPOSITORY GITHUB_RELEASE_GH="$GH" TAG=v1.3.0 CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
 [ "$rc" -eq 1 ] && [ ! -f "$TMP/created-args" ] && printf '%s' "$out" | grep -q 'REPO' && ok "an unset REPO is refused before anything is published" || fail "no-repo -- rc=$rc out='$out'"
