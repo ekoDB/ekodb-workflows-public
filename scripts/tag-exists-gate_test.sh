@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for <script>. Every refusal and the success path, against fixtures.
+# Tests for tag-exists-gate.sh. Every refusal and the success path, against fixtures.
 set -uo pipefail
 # Hermetic against the caller's git environment: no inherited repository
 # pointers and no global or system config (identity, signing, hooks), so a
