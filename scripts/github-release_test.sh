@@ -48,10 +48,14 @@ grep -q -- '--latest' "$TMP/created-args" && fail "happy: --latest forced on cre
 [ -f "$TMP/patched-args" ] && grep -q 'make_latest=legacy' "$TMP/patched-args" && grep -q 'repos/o/r/releases/42' "$TMP/patched-args" && ok "happy: latest follows GitHub's date-and-version rule (make_latest=legacy on the new release)" || fail "happy: make_latest=legacy not set: $(cat "$TMP/patched-args" 2>/dev/null)"
 grep -q 'The new thing' "$TMP/created-notes" && ok "happy: block leads the notes" || fail "happy: block missing from notes"
 grep -q 'Old fix' "$TMP/created-notes" && fail "happy: previous block leaked" || ok "happy: notes scoped to 1.3.0"
-printf '%s' "$out" | grep -q 'still reports' && fail "happy: warned although the repo reports the new tag as latest" || ok "happy: no latest warning when the repo agrees"
+printf '%s' "$out" | grep -q '::warning::' && fail "happy: a warning on a clean publish: $out" || ok "happy: no warning on a clean publish"
 
 seed; touch "$TMP/release-exists"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && [ ! -f "$TMP/created-args" ] && ok "existing release: exit 0, nothing created" || fail "existing -- rc=$rc created=$([ -f "$TMP/created-args" ] && echo yes || echo no)"
+[ -f "$TMP/patched-args" ] && grep -q 'make_latest=legacy' "$TMP/patched-args" && ok "existing release: the latest policy is applied on the re-run too" || fail "existing: no make_latest patch on the re-run"
+
+seed; touch "$TMP/release-exists" "$TMP/patch-fails"; out="$(run v1.3.0)"; rc=$?
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'Finish by hand: gh api -X PATCH repos/o/r/releases/42' && ok "existing release, failed patch: exit 0 with the by-hand command" || fail "existing-patch-fail -- rc=$rc out='$out'"
 
 seed; out="$(run v1.3.0-rc.1)"; rc=$?
 [ "$rc" -eq 0 ] && [ ! -f "$TMP/created-args" ] && printf '%s' "$out" | grep -q 'pre-release' && ok "pre-release: skipped, nothing created" || fail "prerelease -- rc=$rc out='$out'"
@@ -78,7 +82,7 @@ seed; touch "$TMP/create-fails"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'release create failed' && ok "a failed gh release create is reported, exit 1" || fail "create-fail -- rc=$rc out='$out'"
 
 seed; printf '{"tagName":"v1.2.9"}' > "$TMP/latest-tag"; out="$(run v1.3.0)"; rc=$?
-[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "still reports 'v1.2.9'" && ok "warns when the repo still reports an older release as latest" || fail "latest-warn -- rc=$rc out='$out'"
+[ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'reports v1.2.9 as its latest release' && ! printf '%s' "$out" | grep -q '::warning::' && ok "a backport that is not the latest is reported as information, not warned about" || fail "backport -- rc=$rc out='$out'"
 
 out="$(env -u TAG GITHUB_RELEASE_GH="$GH" CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
 [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'TAG is required' && ok "an unset TAG is refused" || fail "unset-tag -- rc=$rc out='$out'"
