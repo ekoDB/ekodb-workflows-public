@@ -2,11 +2,14 @@
 # Tests for the Makefile's bump-version target. Every refusal and the success
 # path, against a copy of the Makefile in a throwaway directory.
 set -uo pipefail
-# Hermetic against the caller's git environment: no inherited repository
-# pointers and no global or system config (identity, signing, hooks), so a
-# fixture behaves the same on a developer's machine and on a bare runner.
+# Hermetic against the caller's environment: no inherited repository pointers,
+# no global or system git config (identity, signing, hooks), none of the
+# scripts' own input variables, and no flags a parent make would hand to a
+# child, so a fixture behaves the same on a developer's machine, under
+# `make VERSION=x test`, and on a bare runner.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+unset VERSION SUBJECT_VERSION SUBJECT TAG CHANGELOG REPO GITHUB_REPOSITORY MAKEFLAGS MFLAGS
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
