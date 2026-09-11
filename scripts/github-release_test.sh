@@ -70,6 +70,9 @@ seed; touch "$TMP/create-fails"; out="$(run v1.3.0)"; rc=$?
 seed; printf '{"tagName":"v1.2.9"}' > "$TMP/latest-tag"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "still reports 'v1.2.9'" && ok "warns when the repo still reports an older release as latest" || fail "latest-warn -- rc=$rc out='$out'"
 
+out="$(env -u TAG GITHUB_RELEASE_GH="$GH" CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'TAG is required' && ok "an unset TAG is refused" || fail "unset-tag -- rc=$rc out='$out'"
+
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1
 fi

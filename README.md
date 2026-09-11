@@ -11,6 +11,10 @@ plain version, no pre-release suffix), containing the changelog collapse of
 `## [Unreleased]` into `## [X.Y.Z] - YYYY-MM-DD` and the version bump. Any
 other merge is a green no-op that says so in the run summary.
 
+The cap must reach the default branch with its subject intact: rebase-merge
+it. A squash appends the PR number and a merge commit replaces the subject,
+and either makes the cap a silent, green no-op.
+
 ## Calling it
 
 With a manifest (the version is cross-checked against it):
@@ -54,7 +58,7 @@ when the commit was not a cap, so a later job in the caller can gate on
 | `not a plain X.Y.Z release version` | the manifest or changelog version carries a pre-release suffix (a pre-release in the SUBJECT never reaches this: it is not a cap, and the run is a green no-op) |
 | `the commit subject names vA but the manifest or changelog says B` | the cap was not applied coherently; fix the manifest or the subject and cap again |
 | `notes are still under '## [Unreleased]'` | the cap did not collapse the block |
-| `carries no date` | the heading was written by hand; the bump writes the date |
+| `no date in that shape` | the heading is not `## [X.Y.Z] - YYYY-MM-DD` as the bump writes it (a link or another date form is not accepted) |
 | `block is empty` | a release carries its notes or is not cut |
 | `tag ... already exists` | a released version is immutable; release the next version |
 | `could not check origin ... failing closed` | the remote could not be asked; nothing is tagged on a guess |

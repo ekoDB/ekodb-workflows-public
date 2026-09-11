@@ -68,7 +68,7 @@ det_runs = "\n".join(s.get("run", "") for s in jobs["detect"]["steps"])
 check("git log -1 --format=%s" in det_runs and "GITHUB_SHA" in det_runs, "detect reads the subject from git at github.sha")
 check("release-cap-detect.sh" in det_runs, "detect calls release-cap-detect.sh")
 
-# 5. Every script checkout is pinned to job_workflow_sha and reads this repo,
+# 5. Every script checkout is pinned to job.workflow_sha and reads this repo,
 #    and the three jobs that run scripts each have one.
 script_checkouts = []
 for j, spec in jobs.items():
@@ -76,14 +76,14 @@ for j, spec in jobs.items():
         w = s.get("with", {}) or {}
         if s.get("uses", "").startswith("actions/checkout") and w.get("repository"):
             script_checkouts.append(j)
-            check(w["repository"] == "ekoDB/ekodb-workflows-public" and w.get("ref") == "${{ github.job_workflow_sha }}", f"{j}: scripts checkout pinned to job_workflow_sha", f"with {w}")
+            check(w["repository"] == "ekoDB/ekodb-workflows-public" and w.get("ref") == "${{ job.workflow_sha }}", f"{j}: scripts checkout pinned to job.workflow_sha", f"with {w}")
 check(script_checkouts == ["detect", "tag", "release"], "detect, tag and release each check the scripts out", f"found {script_checkouts}")
 # ... and each asserts, in the step right after, that the checkout is at that pin and the pin is non-empty.
 for j in ("detect", "tag", "release"):
     steps = jobs[j]["steps"]
     idx = next((i for i, s in enumerate(steps) if (s.get("with") or {}).get("repository")), None)
     nxt = steps[idx + 1] if idx is not None and idx + 1 < len(steps) else {}
-    pinned = (nxt.get("env") or {}).get("PIN") == "${{ github.job_workflow_sha }}" and '[ -n "$PIN" ]' in nxt.get("run", "") and "rev-parse HEAD" in nxt.get("run", "")
+    pinned = (nxt.get("env") or {}).get("PIN") == "${{ job.workflow_sha }}" and '[ -n "$PIN" ]' in nxt.get("run", "") and "rev-parse HEAD" in nxt.get("run", "")
     check(pinned, f"{j}: the step after the scripts checkout refuses an empty pin and a checkout at any other SHA", f"next step: {nxt.get('name')!r}")
 
 # 6. No run body interpolates inputs; the two commands go through env + eval.

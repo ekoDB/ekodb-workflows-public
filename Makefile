@@ -40,16 +40,16 @@ lint-shell: ## shellcheck --severity=warning over scripts/*.sh
 	@command -v shellcheck >/dev/null || { echo "shellcheck is required (brew install shellcheck / apt install shellcheck)"; exit 1; }
 	@shellcheck --severity=warning $(SH_SCRIPTS) && echo "shellcheck clean"
 
-# actionlint's expression checker does not know `github.job_workflow_sha`
-# (the SHA of a reusable workflow, which is real and documented); the one
-# ignore below is that false positive and nothing else.
+# actionlint's expression checker does not know `job.workflow_sha` (the SHA of
+# the reusable workflow file, in the job context per GitHub's contexts
+# reference); the one ignore below is that false positive and nothing else.
 lint-actions: ## actionlint over .github/workflows (system binary, else a pinned download into .tooling/)
 	@AL="$$(command -v actionlint || true)"; \
 	if [ -z "$$AL" ] && [ -x "$(ACTIONLINT_BIN)" ]; then AL="$$(pwd)/$(ACTIONLINT_BIN)"; fi; \
 	if [ -z "$$AL" ]; then \
-	  mkdir -p $(TOOLS_DIR) && bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) $(ACTIONLINT_VERSION) $(TOOLS_DIR) >/dev/null && AL="$$(pwd)/$(ACTIONLINT_BIN)"; \
+	  mkdir -p $(TOOLS_DIR) && bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v$(ACTIONLINT_VERSION)/scripts/download-actionlint.bash) $(ACTIONLINT_VERSION) $(TOOLS_DIR) >/dev/null && AL="$$(pwd)/$(ACTIONLINT_BIN)"; \
 	fi; \
-	"$$AL" -color -ignore 'property "job_workflow_sha" is not defined' && echo "actionlint clean"
+	"$$AL" -color -ignore 'property "workflow_sha" is not defined' && echo "actionlint clean"
 
 lint-python: ## ruff over scripts/*.py
 	@[ -z "$(strip $(PY_SCRIPTS))" ] || $(RUFF) check $(PY_SCRIPTS)
@@ -57,7 +57,7 @@ lint-python: ## ruff over scripts/*.py
 bump-version: ## Collapse [Unreleased] into a dated block and stamp version.json (VERSION=X.Y.Z)
 	@[ -n "$(VERSION)" ] || { echo "usage: make bump-version VERSION=X.Y.Z"; exit 2; }
 	@printf '%s' "$(VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be plain X.Y.Z"; exit 2; }
-	@grep -q '^## \[Unreleased\]' CHANGELOG.md || { echo "CHANGELOG.md has no [Unreleased] block to collapse"; exit 1; }
+	@grep -q '^## \[Unreleased\]$$' CHANGELOG.md || { echo "CHANGELOG.md has no [Unreleased] block to collapse"; exit 1; }
 	@sed -i.bak "s/^## \[Unreleased\]$$/## [$(VERSION)] - $$(date -u +%Y-%m-%d)/" CHANGELOG.md && rm -f CHANGELOG.md.bak
 	@printf '{\n  "version": "%s"\n}\n' "$(VERSION)" > version.json
 	@echo "collapsed [Unreleased] into [$(VERSION)] and stamped version.json; commit as: chore(*): v$(VERSION)"
