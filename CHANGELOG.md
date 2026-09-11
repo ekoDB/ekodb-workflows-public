@@ -4,6 +4,15 @@ All notable changes to ekodb-workflows-public are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the
 version lives in `version.json`.
 
+## [Unreleased]
+
+### Changed
+
+- **Callers pin `@main`.** The README and the workflow header said callers pin
+  a `v1` alias moved by hand after each release; every caller in the
+  organization pins its release workflow at `main`, and this repository now
+  says the same. No alias exists and none is moved.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added
