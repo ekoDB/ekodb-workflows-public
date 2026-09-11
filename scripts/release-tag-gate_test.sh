@@ -10,7 +10,12 @@ fail() { printf 'FAIL: %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
 
 SUT="${DIR}/release-tag-gate.sh"
 
-# A throwaway git repo: the gate asks git about local tags.
+# A throwaway git repo: the gate asks git about local tags. Hermetic: nothing
+# inherited from a caller's git environment, and an identity of its own, so
+# the fixture commit works on a runner that has none configured.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+export GIT_AUTHOR_NAME=fixture GIT_AUTHOR_EMAIL=fixture@example.invalid
+export GIT_COMMITTER_NAME=fixture GIT_COMMITTER_EMAIL=fixture@example.invalid
 REPO="$TMP/repo"; mkdir -p "$REPO"
 git -C "$REPO" init -q; git -C "$REPO" commit -q --allow-empty -m "init"
 printf '## [1.2.3] - 2026-09-11\n\n- an entry\n\n## [1.2.2] - 2026-09-01\n\n- old\n' > "$REPO/CHANGELOG.md"
