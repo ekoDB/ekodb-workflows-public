@@ -4,7 +4,7 @@ All notable changes to ekodb-workflows-public are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the
 version lives in `version.json`.
 
-## [Unreleased]
+## [0.1.0] - 2026-09-11
 
 ### Added
 
