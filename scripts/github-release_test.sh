@@ -49,6 +49,7 @@ grep -q -- '--latest' "$TMP/created-args" && fail "happy: --latest forced on cre
 grep -q 'The new thing' "$TMP/created-notes" && ok "happy: block leads the notes" || fail "happy: block missing from notes"
 grep -q 'Old fix' "$TMP/created-notes" && fail "happy: previous block leaked" || ok "happy: notes scoped to 1.3.0"
 printf '%s' "$out" | grep -q '::warning::' && fail "happy: a warning on a clean publish: $out" || ok "happy: no warning on a clean publish"
+printf '%s' "$out" | grep -q "as its latest release (GitHub's date-and-version rule)" && ok "happy: the closing line credits the rule that was applied" || fail "happy: closing line: $out"
 
 seed; touch "$TMP/release-exists"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && [ ! -f "$TMP/created-args" ] && ok "existing release: exit 0, nothing created" || fail "existing -- rc=$rc created=$([ -f "$TMP/created-args" ] && echo yes || echo no)"
@@ -85,6 +86,7 @@ seed; touch "$TMP/create-fails"; out="$(run v1.3.0)"; rc=$?
 
 seed; printf '{"tagName":"v1.2.9"}' > "$TMP/latest-tag"; out="$(run v1.3.0)"; rc=$?
 [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'reports v1.2.9 as its latest release' && ! printf '%s' "$out" | grep -q '::warning::' && ok "a backport that is not the latest is reported as information, not warned about" || fail "backport -- rc=$rc out='$out'"
+printf '%s' "$out" | grep -q "reports v1.2.9 as its latest release (GitHub's date-and-version rule)" && ok "backport: the closing line credits the rule" || fail "backport closing line: $out"
 
 out="$(env -u TAG GITHUB_RELEASE_GH="$GH" CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
 [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'TAG is required' && ok "an unset TAG is refused" || fail "unset-tag -- rc=$rc out='$out'"
