@@ -30,7 +30,7 @@ permissions:
   contents: write
 jobs:
   auto-tag:
-    uses: ekoDB/ekodb-workflows-public/.github/workflows/auto-tag.yml@v1
+    uses: ekoDB/ekodb-workflows-public/.github/workflows/auto-tag.yml@main
     with:
       version-command: grep -m1 '^version' path/to/Cargo.toml | cut -d'"' -f2
       changelog: path/to/CHANGELOG.md
@@ -40,7 +40,7 @@ Without a manifest (a Go module is versioned by its tags; the newest
 changelog heading is the second source), with a command to run afterwards:
 
 ```yaml
-    uses: ekoDB/ekodb-workflows-public/.github/workflows/auto-tag.yml@v1
+    uses: ekoDB/ekodb-workflows-public/.github/workflows/auto-tag.yml@main
     with:
       post-tag-command: make index-release VERSION="$TAG"
 ```
@@ -72,10 +72,10 @@ step, which runs on `!cancelled()`, publishes it.
 
 ## Versioning this workflow
 
-Callers pin `@v1`. Each release of this repository is a `chore(*): vX.Y.Z` cap
-tagged by this workflow itself; after a `v1.x.y` release, the `v1` alias is
-moved to that commit (`git tag -f v1 vX.Y.Z && git push -f origin v1`), which
-is the convention for reusable actions and is the only tag here that moves.
+Callers pin `@main`, the way every caller in the organization pins its release
+workflow, so a change merged here reaches every caller on its next cap. Each
+release of this repository is a `chore(*): vX.Y.Z` cap tagged by this workflow
+itself; the tags are the record of what changed when, and nothing pins them.
 
 ## Developing
 
