@@ -51,7 +51,7 @@ when the commit was not a cap, so a later job in the caller can gate on
 
 | Message | Meaning |
 | --- | --- |
-| `not a plain X.Y.Z release version` | the subject carries a pre-release suffix; pre-releases are never tagged |
+| `not a plain X.Y.Z release version` | the manifest or changelog version carries a pre-release suffix (a pre-release in the SUBJECT never reaches this: it is not a cap, and the run is a green no-op) |
 | `the commit subject names vA but the manifest or changelog says B` | the cap was not applied coherently; fix the manifest or the subject and cap again |
 | `notes are still under '## [Unreleased]'` | the cap did not collapse the block |
 | `carries no date` | the heading was written by hand; the bump writes the date |

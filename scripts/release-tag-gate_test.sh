@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Tests for <script>. Every refusal and the success path, against fixtures.
 set -uo pipefail
+# Hermetic against the caller's git environment: no inherited repository
+# pointers and no global or system config (identity, signing, hooks), so a
+# fixture behaves the same on a developer's machine and on a bare runner.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -10,10 +15,8 @@ fail() { printf 'FAIL: %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
 
 SUT="${DIR}/release-tag-gate.sh"
 
-# A throwaway git repo: the gate asks git about local tags. Hermetic: nothing
-# inherited from a caller's git environment, and an identity of its own, so
-# the fixture commit works on a runner that has none configured.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+# A throwaway git repo: the gate asks git about local tags. The fixture commit
+# carries its own identity, so it works on a runner that has none configured.
 export GIT_AUTHOR_NAME=fixture GIT_AUTHOR_EMAIL=fixture@example.invalid
 export GIT_COMMITTER_NAME=fixture GIT_COMMITTER_EMAIL=fixture@example.invalid
 REPO="$TMP/repo"; mkdir -p "$REPO"

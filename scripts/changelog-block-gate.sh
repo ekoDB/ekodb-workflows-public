@@ -22,7 +22,7 @@ if grep -Eq "^## \[${ver_re}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}" "$CHANGELOG"; then
   exit 0
 fi
 if grep -Eq "^## \[${ver_re}\]" "$CHANGELOG"; then
-  echo "changelog-block-gate: '## [${VERSION}]' exists in ${CHANGELOG} but carries no date -- the heading was written by hand rather than by the bump." >&2
+  echo "changelog-block-gate: '## [${VERSION}]' exists in ${CHANGELOG} but not as the '## [${VERSION}] - YYYY-MM-DD' heading the bump writes (no date in that shape; a link or another date form is not accepted)." >&2
   exit 1
 fi
 newest="$(grep -m1 -E '^## \[' "$CHANGELOG" || true)"
