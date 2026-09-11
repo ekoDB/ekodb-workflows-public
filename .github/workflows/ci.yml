@@ -18,9 +18,7 @@ jobs:
           python-version: "3.12"
       - name: Install the pinned tooling
         run: pip install -q -r requirements-dev.txt
-      - name: Install actionlint (shellcheck is preinstalled on ubuntu-latest)
-        run: |
-          mkdir -p .tooling
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12 .tooling >/dev/null
+      # shellcheck is preinstalled on ubuntu-latest; `make lint` downloads the
+      # actionlint release the Makefile pins, so the version lives in one place.
       - run: make lint
       - run: make test

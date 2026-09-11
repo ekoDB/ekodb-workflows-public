@@ -40,6 +40,9 @@ seed; out="$(run VERSION=1.0.0-rc.1)"; rc=$?
 seed; out="$(run)"; rc=$?
 [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'usage' && ok "a missing VERSION is refused with usage" || fail "no-version -- rc=$rc out='$out'"
 
+seed; sed -i.bak 's/^## \[Unreleased\]$/## [Unreleased] - TBD/' "$REPO/CHANGELOG.md"; rm -f "$REPO/CHANGELOG.md.bak"; out="$(run VERSION=1.0.0)"; rc=$?
+[ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'no \[Unreleased\] block' && grep -q '^## \[Unreleased\] - TBD$' "$REPO/CHANGELOG.md" && grep -q '"version": "0.0.1"' "$REPO/version.json" && ok "a non-canonical [Unreleased] heading is refused and nothing is stamped" || fail "noncanonical -- rc=$rc out='$out'"
+
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1
 fi

@@ -56,6 +56,11 @@ out="$(run 1.2.3 1.2.3 "printf 'abc\trefs/tags/v1.2.3\n'")"; rc=$?
 out="$(run 1.2.3 1.2.3 "exit 128")"; rc=$?
 [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'failing closed' && ok "an unanswerable remote fails closed" || fail "remote-fail -- rc=$rc out='$out'"
 
+out="$(cd "$REPO" && env -u VERSION SUBJECT_VERSION=1.2.3 CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'VERSION is required' && ok "an unset VERSION is refused" || fail "unset-version -- rc=$rc out='$out'"
+out="$(cd "$REPO" && env -u SUBJECT_VERSION VERSION=1.2.3 CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'SUBJECT_VERSION is required' && ok "an unset SUBJECT_VERSION is refused" || fail "unset-subject -- rc=$rc out='$out'"
+
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1
 fi

@@ -38,6 +38,9 @@ out="$(run 1.2.3 "$TMP/absent.md")"; rc=$?
 out="$(run 1.2.3-rc.1 "$TMP/dated.md")"; rc=$?
 [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'pre-release' && ok "a pre-release version is refused" || fail "prerelease -- rc=$rc out='$out'"
 
+out="$(env -u VERSION CHANGELOG="$TMP/CHANGELOG.md" bash "$SUT" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'VERSION is required' && ok "an unset VERSION is refused" || fail "unset-version -- rc=$rc out='$out'"
+
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1
 fi
