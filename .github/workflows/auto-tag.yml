@@ -11,7 +11,9 @@ name: auto-tag
 #
 # The tag goes on the commit that was DECIDED on, github.sha, never on "the
 # branch tip by the time the job runs": the tag job asserts that commit is
-# contained in the default branch before tagging it.
+# contained in the default branch before tagging it. For a two-parent merge,
+# the second parent's subject may identify the cap, but the merged commit is
+# still the release target.
 
 on:
   workflow_call:
@@ -57,6 +59,8 @@ jobs:
       tag: ${{ steps.cap.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - name: Check out the workflow's scripts (pinned to this workflow's commit)
         uses: actions/checkout@v7
         with:
@@ -70,16 +74,17 @@ jobs:
           [ -n "$PIN" ] || { echo "::error::auto-tag: job.workflow_sha is empty -- refusing to run scripts from an unpinned checkout."; exit 1; }
           have="$(git -C .ekodb-workflows-public rev-parse HEAD)"
           [ "$have" = "$PIN" ] || { echo "::error::auto-tag: the scripts checkout is at ${have}, not the pinned ${PIN}."; exit 1; }
-      - name: Is the head commit a release cap?
+      - name: Is the head or merged branch tip a release cap?
         id: cap
         run: |
           SUBJECT="$(git log -1 --format=%s "$GITHUB_SHA")"
           echo "subject: ${SUBJECT}"
-          out="$(SUBJECT="$SUBJECT" bash .ekodb-workflows-public/scripts/release-cap-detect.sh)"
+          out="$(COMMIT="$GITHUB_SHA" bash .ekodb-workflows-public/scripts/release-cap-at-commit.sh)"
           if [ -n "$out" ]; then
-            version="${out#version=}"
+            version="$(printf '%s\n' "$out" | sed -n 's/^version=//p')"
+            cap_sha="$(printf '%s\n' "$out" | sed -n 's/^cap_sha=//p')"
             { echo "version=${version}"; echo "tag=v${version}"; } >> "$GITHUB_OUTPUT"
-            printf '### Release cap detected — tagging\n\n| | |\n| --- | --- |\n| Version | %s |\n| Commit | %s |\n| Subject | %s |\n\n' "$version" "$GITHUB_SHA" "$SUBJECT" >> "$GITHUB_STEP_SUMMARY"
+            printf '### Release cap detected — tagging\n\n| | |\n| --- | --- |\n| Version | %s |\n| Cap commit | %s |\n| Tag target | %s |\n| Cap subject | %s |\n\n' "$version" "$cap_sha" "$GITHUB_SHA" "$(git log -1 --format=%s "$cap_sha")" >> "$GITHUB_STEP_SUMMARY"
           else
             { echo "version="; echo "tag="; } >> "$GITHUB_OUTPUT"
             printf '### Not a release cap — nothing to tag\n\nThis is the normal outcome for a merge that is not a version cap.\n\n- Commit: %s\n- Subject: %s\n- A cap is chore(*): vX.Y.Z with a plain version and no pre-release suffix.\n\n' "$GITHUB_SHA" "$SUBJECT" >> "$GITHUB_STEP_SUMMARY"

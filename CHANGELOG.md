@@ -6,6 +6,12 @@ version lives in `version.json`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Detect a release cap at the second parent of a two-parent merge commit and
+  tag the merged commit on the default branch, while retaining the direct-cap
+  path and exact cap subject rule.
+
 ### Changed
 
 - **Callers pin `@main`.** The README and the workflow header said callers pin
