@@ -61,12 +61,13 @@ check(set(jobs["release"].get("needs", [])) == {"detect", "tag"}, "release needs
 post_if = str(jobs["post-tag"].get("if", ""))
 check(all(s in post_if for s in ("!cancelled()", "needs.release.result == 'success'", "inputs.post-tag-command != ''")), "post-tag gated on release success and a command", f"post-tag if: {post_if}")
 
-# 4. Detect exports both outputs and reads the subject from git at github.sha.
+# 4. Detect exports both outputs and reads the current commit plus its parents.
 det_out = jobs["detect"].get("outputs", {})
 check(set(det_out) == {"version", "tag"}, "detect declares version and tag outputs", f"detect outputs {det_out}")
 det_runs = "\n".join(s.get("run", "") for s in jobs["detect"]["steps"])
-check("git log -1 --format=%s" in det_runs and "GITHUB_SHA" in det_runs, "detect reads the subject from git at github.sha")
-check("release-cap-detect.sh" in det_runs, "detect calls release-cap-detect.sh")
+det_checkout = next(s for s in jobs["detect"]["steps"] if s.get("uses", "").startswith("actions/checkout") and not (s.get("with") or {}).get("repository"))
+check((det_checkout.get("with") or {}).get("fetch-depth", 1) >= 2, "detect fetches the merged branch tip")
+check('COMMIT="$GITHUB_SHA"' in det_runs and "release-cap-at-commit.sh" in det_runs, "detect checks github.sha and its second parent")
 
 # 5. Every script checkout is pinned to job.workflow_sha and reads this repo,
 #    and the three jobs that run scripts each have one.

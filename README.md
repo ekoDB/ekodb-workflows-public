@@ -11,11 +11,12 @@ plain version, no pre-release suffix), containing the changelog collapse of
 `## [Unreleased]` into `## [X.Y.Z] - YYYY-MM-DD` and the version bump. Any
 other merge is a green no-op that says so in the run summary.
 
-The cap must reach the default branch with its subject intact and as the tip
-of the push: rebase-merge it, and merge nothing on top of it in the same push.
-A squash appends the PR number, a merge commit replaces the subject, and a
-push whose tip is a later commit never examines the cap; each is a silent,
-green no-op (the run summary names the subject it examined).
+The cap must reach the default branch with its subject intact, either as the
+tip of the push (rebase or fast-forward) or as the second parent of a
+two-parent merge commit. In the merge case, the tag points to the merge commit
+that reached the default branch. A squash that changes the cap subject, a cap
+buried behind another commit on the merged branch, or a push whose tip is a
+later commit is a silent, green no-op.
 
 ## Calling it
 
