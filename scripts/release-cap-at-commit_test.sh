@@ -62,6 +62,38 @@ git switch -q main
 git -c commit.gpgsign=false merge -q --no-ff followup -m 'Merge pull request #13 from followup'
 want_not "$(git rev-parse HEAD)" 'cap behind the second-parent tip is ignored'
 
+# A cap PR merged into its feature PR, then that PR merged into main.
+tree="$(git rev-parse "$cap^{tree}")"
+wrap() { # <second parent> <tree> <label>
+  printf '%s\n' "$3" | git -c commit.gpgsign=false commit-tree "$2" -p "$base" -p "$1"
+}
+nested="$(wrap "$merge" "$tree" 'Merge feature carrying merged cap')"
+want_cap "$nested" "$cap" 'two content-identical merge wrappers retain the cap'
+git branch nested-release "$nested"
+git clone -q --depth 2 --branch nested-release "file://${TMP}" "${TMP}/nested-shallow"
+out="$(cd "${TMP}/nested-shallow" && detect "$nested")"; rc=$?
+if [ "$rc" -ne 0 ]; then ok 'incomplete nested ancestry fails closed'; else fail 'incomplete nested ancestry must not report a green no-op'; fi
+git -C "${TMP}/nested-shallow" fetch -q --unshallow
+out="$(cd "${TMP}/nested-shallow" && detect "$nested")"; rc=$?
+expected="$(printf 'version=1.2.3\ncap_sha=%s' "$cap")"
+if [ "$rc" -eq 0 ] && [ "$out" = "$expected" ]; then ok 'full workflow ancestry detects nested cap'; else fail "full ancestry -- rc=$rc out='$out'"; fi
+
+blob="$(printf 'content after cap\n' | git hash-object -w --stdin)"
+changed_tree="$(printf '100644 blob %s\tnew-file\n' "$blob" | git mktree)"
+changed="$(wrap "$merge" "$changed_tree" 'Merge with additional content')"
+want_not "$changed" 'changed-tree wrapper cannot publish an older cap'
+linear="$(printf 'ordinary content tip\n' | git -c commit.gpgsign=false commit-tree "$tree" -p "$nested")"
+want_not "$linear" 'ordinary commit above nested cap is never traversed'
+octopus="$(printf 'octopus merge\n' | git -c commit.gpgsign=false commit-tree "$tree" -p "$base" -p "$first_parent" -p "$nested")"
+want_not "$octopus" 'octopus merge is not a supported cap wrapper'
+
+bounded="$cap"
+for ((i=1; i<=32; i++)); do bounded="$(wrap "$bounded" "$tree" "wrapper $i")"; done
+want_cap "$bounded" "$cap" '32 merge wrappers are supported'
+too_deep="$(wrap "$bounded" "$tree" 'wrapper 33')"
+out="$(detect "$too_deep")"; rc=$?
+if [ "$rc" -ne 0 ]; then ok 'exceeding the wrapper bound fails closed'; else fail 'wrapper bound must fail closed'; fi
+
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1
 fi

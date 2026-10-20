@@ -12,11 +12,17 @@ plain version, no pre-release suffix), containing the changelog collapse of
 other merge is a green no-op that says so in the run summary.
 
 The cap must reach the default branch with its subject intact, either as the
-tip of the push (rebase or fast-forward) or as the second parent of a
-two-parent merge commit. In the merge case, the tag points to the merge commit
-that reached the default branch. A squash that changes the cap subject, a cap
-buried behind another commit on the merged branch, or a push whose tip is a
-later commit is a silent, green no-op.
+tip of the push (rebase or fast-forward) or through at most 32 two-parent merge
+wrappers. Each wrapper must have the same complete file tree as its second
+parent. This includes a cap PR merged into a feature PR that is then merged
+into the default branch. The tag always points to the pushed default-branch
+commit. Detection fetches complete ancestry and fails if ancestry is missing
+or the wrapper limit is exceeded.
+
+A changed-tree wrapper, a squash that changes the cap subject, a cap behind an
+ordinary commit, or an octopus merge is a green no-op. Detection never searches
+arbitrary earlier history for an old cap. Content added above a cap needs a new
+cap before release.
 
 ## Calling it
 
