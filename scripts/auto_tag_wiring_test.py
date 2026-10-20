@@ -66,7 +66,7 @@ det_out = jobs["detect"].get("outputs", {})
 check(set(det_out) == {"version", "tag"}, "detect declares version and tag outputs", f"detect outputs {det_out}")
 det_runs = "\n".join(s.get("run", "") for s in jobs["detect"]["steps"])
 det_checkout = next(s for s in jobs["detect"]["steps"] if s.get("uses", "").startswith("actions/checkout") and not (s.get("with") or {}).get("repository"))
-check((det_checkout.get("with") or {}).get("fetch-depth", 1) >= 2, "detect fetches the merged branch tip")
+check((det_checkout.get("with") or {}).get("fetch-depth", 1) == 0, "detect fetches complete nested merge ancestry")
 check('COMMIT="$GITHUB_SHA"' in det_runs and "release-cap-at-commit.sh" in det_runs, "detect checks github.sha and its second parent")
 
 # 5. Every script checkout is pinned to job.workflow_sha and reads this repo,
