@@ -4,6 +4,14 @@ All notable changes to ekodb-workflows-public are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the
 version lives in `version.json`.
 
+## [Unreleased]
+
+### Fixed
+
+- Detect final release caps through bounded chains of content-identical merge
+  wrappers, including a cap PR merged into a feature PR before main. Fetch full
+  ancestry and fail closed on missing history or excessive nesting (#9).
+
 ## [0.1.1] - 2026-10-08
 
 ### Fixed
