@@ -1,0 +1,50 @@
+name: prune-pr-caches
+
+# Delete a closed pull request's Actions caches. Only runs of that pull request
+# can restore them, so after it closes they only take up the repository's cache
+# storage until retention expires them. Reusable; the caller runs it on
+# pull_request_target: closed and grants the permissions below.
+#
+# pull_request_target is what lets a Dependabot-authored pull request delete its
+# caches, because the plain pull_request event gives those runs a read-only
+# token. It is safe here because the only code this job runs is this
+# repository's script, at the commit this workflow was resolved from. The
+# pull request's own code is never checked out.
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        description: "The number of the pull request that closed."
+        required: true
+        type: number
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the workflow's scripts (pinned to this workflow's commit)
+        uses: actions/checkout@v7
+        with:
+          repository: ekoDB/ekodb-workflows-public
+          ref: ${{ job.workflow_sha }}
+          path: .ekodb-workflows-public
+          persist-credentials: false
+      - name: Assert the scripts are the ones this workflow is pinned to
+        env:
+          PIN: ${{ job.workflow_sha }}
+        run: |
+          [ -n "$PIN" ] || { echo "::error::prune-pr-caches: job.workflow_sha is empty -- refusing to run scripts from an unpinned checkout."; exit 1; }
+          have="$(git -C .ekodb-workflows-public rev-parse HEAD)"
+          [ "$have" = "$PIN" ] || { echo "::error::prune-pr-caches: the scripts checkout is at ${have}, not the pinned ${PIN}."; exit 1; }
+      - name: Delete the pull request's caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: bash .ekodb-workflows-public/scripts/prune-pr-caches.sh "$REPO" "$PR_NUMBER"

@@ -4,6 +4,9 @@ A reusable GitHub Actions workflow for ekoDB's public repositories: when a
 version cap merges to the default branch, it cuts the tag and publishes the
 GitHub Release. It runs with `github.token` only and shares nothing.
 
+It also carries `prune-pr-caches.yml`, described under
+[Deleting a closed pull request's caches](#deleting-a-closed-pull-requests-caches).
+
 ## What a cap is
 
 A commit whose subject is exactly `chore(<scope>): vX.Y.Z` (scope optional,
@@ -59,6 +62,33 @@ trigger the caller on that branch too). Outputs: `version` and `tag`, empty
 when the commit was not a cap, so a later job in the caller can gate on
 `needs.auto-tag.outputs.tag != ''`. The caller must declare
 `permissions: contents: write`.
+
+## Deleting a closed pull request's caches
+
+`prune-pr-caches.yml` deletes the Actions caches of a pull request when it
+closes. Only runs of that pull request can restore them, so afterwards they
+only take up the repository's cache storage until retention expires them.
+Default-branch caches and those of other pull requests are never touched.
+
+```yaml
+name: prune-pr-caches
+on:
+  pull_request_target:
+    types: [closed]
+permissions: {}
+jobs:
+  prune:
+    permissions:
+      actions: write
+      contents: read
+    uses: ekoDB/ekodb-workflows-public/.github/workflows/prune-pr-caches.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+```
+
+`pull_request_target` is what lets a Dependabot-authored pull request delete
+its caches. The job runs only this repository's script and never checks out
+the pull request's code.
 
 ## What it refuses, and what each means
 
