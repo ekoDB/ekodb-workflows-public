@@ -6,6 +6,12 @@ version lives in `version.json`.
 
 ## [Unreleased]
 
+### Added
+
+- `prune-pr-caches.yml`, a reusable workflow that deletes a pull request's
+  Actions caches when it closes, so closed pull requests stop filling the
+  repository's cache storage (#12).
+
 ### Fixed
 
 - Detect final release caps through bounded chains of content-identical merge
