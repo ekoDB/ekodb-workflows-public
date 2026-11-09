@@ -104,6 +104,10 @@ refused "refuses an empty pull request number" acme/widgets ""
 refused "refuses a number carrying a jq expression" acme/widgets '7" or true or "'
 refused "refuses a repository with no owner" widgets 7
 refused "refuses a repository with a path in it" 'acme/widgets/../other' 7
+refused "refuses a repository named .." 'acme/..' 7
+refused "refuses a repository named ." 'acme/.' 7
+refused "refuses an owner named .." '../widgets' 7
+refused "refuses an owner named ." './widgets' 7
 
 if [ "$FAILURES" -ne 0 ]; then
   printf '%s failure(s)\n' "$FAILURES"; exit 1

@@ -24,7 +24,8 @@ if ! [[ "$pr" =~ ^[1-9][0-9]*$ ]]; then
   echo "::error::prune-pr-caches: '${pr}' is not a pull request number" >&2
   exit 2
 fi
-if ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+if ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] \
+  || [[ "${repo%%/*}" =~ ^\.{1,2}$ ]] || [[ "${repo##*/}" =~ ^\.{1,2}$ ]]; then
   echo "::error::prune-pr-caches: '${repo}' is not an owner/repo name" >&2
   exit 2
 fi
