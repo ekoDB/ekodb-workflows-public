@@ -28,6 +28,11 @@ with open(WF, encoding="utf-8") as f:
 # PyYAML reads the bare key `on` as boolean True.
 on = wf.get("on", wf.get(True))
 check(set(on) == {"workflow_call"}, "is only reusable, with no trigger of its own", f"triggers are {set(on)}")
+check(
+    set(on["workflow_call"]) == {"inputs"},
+    "workflow_call declares inputs only: no secrets or outputs reach the job",
+    f"workflow_call keys are {sorted(on['workflow_call'])}",
+)
 inputs = on["workflow_call"].get("inputs", {})
 check(set(inputs) == {"pr-number"}, "declares exactly the pr-number input", f"inputs are {set(inputs)}")
 check(inputs["pr-number"].get("required") is True, "pr-number is required")
